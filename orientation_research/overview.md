@@ -49,9 +49,3 @@ The script loads the calibration sheet image ('calibration_sheet.jpg') in graysc
 
 - Dummy numbers are used in this example to demonstrate the calculation of the calibration factor (`mm_per_pixel`).
 - The calibration factor represents the real-world distance (in mm) per pixel in the image.
-
-## Conclusion
-
-This Python script provides functionality for AR marker detection and calibration, allowing for accurate alignment of virtual objects with the real-world environment.
-
-For any inquiries or issues, please contact [Your Name/Email].
