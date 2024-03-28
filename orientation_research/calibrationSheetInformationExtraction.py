@@ -50,13 +50,29 @@ while True:
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(descriptors, descriptors_frame, k=2)
     
-    # Apply ratio test
+    # Ratio Test for Match Filtering
+    # The ratio test is applied to filter out potentially ambiguous matches
+    # and retain only those matches that are more confidently associated with each other.
+    # For each match in the list of matches (`matches`), consisting of pairs of nearest neighbors (`m` and `n`),
+    # this test compares the distance of the current match (`m`) with the distance of its nearest neighbor match (`n`).
+    # If the distance of `m` is significantly smaller than a fraction (e.g., 0.75) of the distance of `n`,
+    # it indicates a strong evidence of correspondence between the descriptors, and the match is considered good.
+    # Such good matches are appended to the `good_matches` list, reducing the likelihood of false positives
+    # and improving the robustness and accuracy of subsequent feature-based processing tasks.
     good_matches = []
     for m, n in matches:
         if m.distance < 0.75 * n.distance:
             good_matches.append(m)
     
-    # If enough matches are found, marker is detected
+    # Marker Detection Visualization
+    # If enough good matches are found between descriptors, indicating marker detection:
+    #   - Extract corresponding keypoints from the calibration sheet and the camera frame.
+    #   - Estimate the homography matrix using RANSAC algorithm to find the transformation between points.
+    #   - Apply perspective transformation to align the corners of the calibration sheet with the detected marker.
+    #   - Draw an outline around the detected marker in the camera frame.
+    #   - Display the camera frame with the marker outline.
+    # If the marker is not detected, display the original camera frame.
+    # Check for user input to exit the program by pressing the 'q' key.
     if len(good_matches) > 10:
         src_pts = np.float32([keypoints[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
         dst_pts = np.float32([keypoints_frame[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
