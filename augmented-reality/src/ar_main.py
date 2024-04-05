@@ -52,7 +52,22 @@ def main():
         # draw detected markers
         if ids is not None:
             aruco.drawDetectedMarkers(dst, corners)
-            print(corners)
+            src_pts = np.array([[0, 0], [0, marker_size], [marker_size, marker_size], [marker_size, 0]], dtype=np.float32)
+            dst_pts = np.array(corners[0][0], dtype=np.float32)
+            print(dst_pts)
+            homography, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)   
+            print(homography)
+            
+            # Warp the marker image based on the homography matrix
+            warped_image = cv2.warpPerspective(marker_image, homography, (dst.shape[1], dst.shape[0]))
+            warped_image = cv2.cvtColor(warped_image, cv2.COLOR_GRAY2BGR)
+            # Create a mask of the warped image
+            mask = np.zeros_like(dst)
+            mask = cv2.fillConvexPoly(mask, np.int32(dst_pts), (255,)*dst.shape[2])
+
+            # Overlay the warped image onto the original frame
+            dst = cv2.bitwise_and(dst, cv2.bitwise_not(mask))
+            dst = cv2.add(dst, warped_image)
 
         # show result
         cv2.imshow('frame', dst)
