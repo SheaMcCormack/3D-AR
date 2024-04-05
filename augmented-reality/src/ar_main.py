@@ -1,15 +1,8 @@
 
-# Useful links
-# http://www.pygame.org/wiki/OBJFileLoader
-# https://rdmilligan.wordpress.com/2015/10/15/augmented-reality-using-opencv-opengl-and-blender/
-# https://clara.io/library
-
-# TODO -> Implement command line arguments (scale, model and object to be projected)
-#      -> Refactor and organize code (proper funcition definition and separation, classes, error handling...)
-
 import argparse
 
 import cv2
+import cv2.aruco as aruco
 import numpy as np
 import math
 import os
@@ -24,12 +17,22 @@ def main():
     dir_name = os.getcwd()
     obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
 
+    dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+    parameters =  aruco.DetectorParameters()
+    detector = aruco.ArucoDetector(dictionary, parameters)
+
+    # Generate and save the AR marker image
+    marker_id = 99
+    marker_size = 400
+    marker_image = cv2.aruco.generateImageMarker(dictionary, marker_id, marker_size)
+    cv2.imwrite("marker_image.png", marker_image)
+
     cap = cv2.VideoCapture(0)
+    
 
     while True:
         # read the current frame
         ret, frame = cap.read()
-        print(frame.shape)
         if not ret:
             print("Unable to capture video")
             return 
@@ -42,6 +45,14 @@ def main():
         # crop the image
         x, y, w, h = roi
         dst = dst[y:y+h, x:x+w]
+
+        # detect markers
+        corners, ids, _ = detector.detectMarkers(dst)
+
+        # draw detected markers
+        if ids is not None:
+            aruco.drawDetectedMarkers(dst, corners)
+            print(corners)
 
         # show result
         cv2.imshow('frame', dst)
