@@ -15,7 +15,7 @@ def main():
     
     # Load 3D model from OBJ file
     dir_name = os.getcwd()
-    obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
+    obj = OBJ(os.path.join(dir_name, 'models/pirate-ship-fat.obj'), swapyz=True)
 
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
     parameters =  aruco.DetectorParameters()
@@ -92,7 +92,7 @@ def render(img, obj, projection, h, w, color=False):
     Render a loaded obj model into the current video frame
     """
     vertices = obj.vertices
-    scale_matrix = np.eye(3) * 3
+    scale_matrix = np.eye(3) * 100
 
     for face in obj.faces:
         face_vertices = face[0]
@@ -104,7 +104,7 @@ def render(img, obj, projection, h, w, color=False):
         dst = cv2.perspectiveTransform(points.reshape(-1, 1, 3), projection)
         imgpts = np.int32(dst)
         if color is False:
-            cv2.fillConvexPoly(img, imgpts, (0, 0, 0))
+            cv2.fillConvexPoly(img, imgpts, (0, 0, 100))
         else:
             color = hex_to_rgb(face[-1])
             color = color[::-1]  # reverse
