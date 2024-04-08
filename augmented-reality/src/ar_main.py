@@ -25,9 +25,21 @@ def main():
     # Generate the AR marker image
     marker_id = 99
     marker_size = 400
-    marker_image = cv2.aruco.generateImageMarker(dictionary, marker_id, marker_size)
+    #marker_image = cv2.aruco.generateImageMarker(dictionary, marker_id, marker_size)
     #cv2.imwrite("marker_image.png", marker_image)
 
+    base_src = np.array([[0, 0], [marker_size, 0], [marker_size, marker_size], [0, marker_size]], dtype=np.float32)
+    marker_dict = {'69': {'src_pts': base_src}, 
+                   '99': {'src_pts': base_src + np.array([[2*marker_size, 0], [2*marker_size, 0], [2*marker_size, 0], [2*marker_size, 0], ], dtype=np.float32)}, 
+                   '22':{'src_pts': base_src + np.array([[0, 2*marker_size], [0, 2*marker_size], [0, 2*marker_size], [0, 2*marker_size]], dtype=np.float32)}, 
+                   '97':{'src_pts': base_src + np.array([[2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size]], dtype=np.float32)}}
+    
+    for marker_id in marker_dict.keys():
+        marker_image = cv2.aruco.generateImageMarker(dictionary, int(marker_id), marker_size)
+        #cv2.imwrite("marker_image_" + str(marker_id) + ".png", marker_image)
+        marker_dict[str(marker_id)]['marker_image'] = marker_image
+        marker_dict[str(marker_id)]['marker_image'] = marker_size
+    
     cap = cv2.VideoCapture(0)
 
     while True:
@@ -50,30 +62,49 @@ def main():
         # Draw detected markers
         if ids is not None:
             aruco.drawDetectedMarkers(dst, corners)
-            src_pts = np.array([[0, 0], [marker_size, 0], [marker_size, marker_size], [0, marker_size]], dtype=np.float32)
-            dst_pts = np.array(corners[0][0], dtype=np.float32)
+            src_pts = np.array([])
+            dst_pts = np.array([])
+            c = 0
+            for id in ids:
+                if c == 0:
+                    src_pts = marker_dict[str(id[0])]['src_pts']
+                    dst_pts = np.array(corners[0][0], dtype=np.float32)
+                else:
+                    src_pts = np.vstack((src_pts, marker_dict[str(id[0])]['src_pts']))
+                    dst_pts = np.vstack((dst_pts, corners[c][0]))
+                c+=1
 
             homography = DLT(src_pts, dst_pts)
-            #homography, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)   
-            homography *= -1
-            
-            # Warp the marker image based on the homography matrix
-            warped_image = cv2.warpPerspective(marker_image, homography, (dst.shape[1], dst.shape[0]))
-            warped_image = cv2.cvtColor(warped_image, cv2.COLOR_GRAY2BGR)
-            
-            # Create a mask of the warped image
-            mask = np.zeros_like(dst)
-            mask = cv2.fillConvexPoly(mask, np.int32(dst_pts), (255,)*dst.shape[2])
+            homography, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)   
+            #homography *= -1
 
-            # Overlay the warped image onto the original frame
-            dst = cv2.bitwise_and(dst, cv2.bitwise_not(mask))
-            dst = cv2.add(dst, warped_image)
+            if False:
+                c = 0
+                for id in ids:
+                    # Warp the marker image based on the homography matrix
+                    marker_image = marker_dict[str(id[0])]['marker_image']
+                    warped_image = cv2.warpPerspective(marker_image, homography, (dst.shape[1], dst.shape[0]))
+                    warped_image = warped_image.astype(np.uint8)  # Convert to CV_8U depth
+
+                    # Convert the warped image to BGR color space
+                    warped_image = cv2.cvtColor(warped_image, cv2.COLOR_GRAY2BGR)
+
+                    # Create a mask of the warped image
+                    mask = np.zeros_like(dst)
+                    mask = cv2.fillConvexPoly(mask, np.array(corners[c][0], dtype=np.int32), (255,)*dst.shape[2])
+
+                    # Overlay the warped image onto the original frame
+                    dst = cv2.bitwise_and(dst, cv2.bitwise_not(mask))
+                    dst = cv2.add(dst, warped_image)
+                    
+                    c+=1
+
             if homography is not None:
                 try:
                     # obtain 3D projection matrix from homography matrix and camera parameters
                     projection = projection_matrix(cameraMatrix, homography)  
                     # project cube or model
-                    dst = render(dst, obj, projection, h, w)
+                    dst = render(dst, obj, projection, marker_size)
                 except:
                     pass
 
@@ -112,7 +143,7 @@ def DLT(pts_src, pts_dst):
 
     return H
 
-def render(img, obj, projection, h, w, color=False):
+def render(img, obj, projection, marker_size, color=False):
     """
     Render a loaded obj model into the current video frame
     """
@@ -125,7 +156,7 @@ def render(img, obj, projection, h, w, color=False):
         points = np.dot(points, scale_matrix)
         # render model in the middle of the reference surface. To do so,
         # model points must be displaced
-        points = np.array([[p[0] + w / 2, p[1] + h / 2, p[2]] for p in points])
+        points = np.array([[p[0] + 1.5*marker_size, p[1] + 1.5*marker_size, p[2]] for p in points])
         dst = cv2.perspectiveTransform(points.reshape(-1, 1, 3), projection)
         imgpts = np.int32(dst)
         if color is False:
