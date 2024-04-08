@@ -9,26 +9,26 @@ import os
 from objloader_simple import *
 
 def main():
-    # camera calibration matrix
+    # Camera calibration matrix found from calibration.py
     cameraMatrix = np.array([[655.24548568, 0.0, 313.17837698], [0.0, 659.32398974, 244.03682075], [0.0, 0.0, 1.0]])
     dist = np.array([[-0.41837736, 0.24344121, -0.00069054,  0.00109116, -0.34367113]])
     
     # Load 3D model from OBJ file
     dir_name = os.getcwd()
     obj = OBJ(os.path.join(dir_name, 'models/pirate-ship-fat.obj'), swapyz=True)
-
+    
+    # Initialize the detector
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
     parameters =  aruco.DetectorParameters()
     detector = aruco.ArucoDetector(dictionary, parameters)
 
-    # Generate and save the AR marker image
+    # Generate the AR marker image
     marker_id = 99
     marker_size = 400
     marker_image = cv2.aruco.generateImageMarker(dictionary, marker_id, marker_size)
-    cv2.imwrite("marker_image.png", marker_image)
+    #cv2.imwrite("marker_image.png", marker_image)
 
     cap = cv2.VideoCapture(0)
-    
 
     while True:
         # read the current frame
@@ -36,26 +36,25 @@ def main():
         if not ret:
             print("Unable to capture video")
             return 
+        
+        # Undistort the frame
         h,  w = frame.shape[:2]
         newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
-
-        # Undistort
         dst = cv2.undistort(frame, cameraMatrix, dist, None, newCameraMatrix)
-
-        # crop the image
         x, y, w, h = roi
         dst = dst[y:y+h, x:x+w]
 
-        # detect markers
+        # Detect markers on undistored frame
         corners, ids, _ = detector.detectMarkers(dst)
 
-        # draw detected markers
+        # Draw detected markers
         if ids is not None:
             aruco.drawDetectedMarkers(dst, corners)
-            src_pts = np.array([[0, 0], [0, marker_size], [marker_size, marker_size], [marker_size, 0]], dtype=np.float32)
+            src_pts = np.array([[0, 0], [marker_size, 0], [marker_size, marker_size], [0, marker_size]], dtype=np.float32)
             dst_pts = np.array(corners[0][0], dtype=np.float32)
 
-            homography, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)   
+            homography = DLT(src_pts, dst_pts)
+            #homography, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)   
             homography *= -1
             
             # Warp the marker image based on the homography matrix
@@ -87,6 +86,32 @@ def main():
     cv2.destroyAllWindows()
     return 0
 
+def DLT(pts_src, pts_dst):
+    # Calculate A matrix
+    for i in range(4):
+        pt_src = pts_src[i]
+        pt_dst = pts_dst[i]
+
+        x, y, z = pt_src[0], pt_src[1], 1
+        x_t, y_t, z_t = pt_dst[0], pt_dst[1], 1
+        if i == 0:
+            A = np.array([
+                [0, 0, 0, -z_t*x, -z_t*y, -z_t*z, y_t*x, y_t*y, y_t*z],
+                [z_t*x, z_t*y, z_t*z, 0, 0, 0, -x_t*x, -x_t*y, -x_t*z]
+            ])
+        else:
+            A = np.concatenate((A, np.array([
+                [0, 0, 0, -z_t*x, -z_t*y, -z_t*z, y_t*x, y_t*y, y_t*z],
+                [z_t*x, z_t*y, z_t*z, 0, 0, 0, -x_t*x, -x_t*y, -x_t*z]
+            ])), axis=0)
+
+    # Perform SVD
+    _, _, V = np.linalg.svd(A)
+    h = V[-1]
+    H = h.reshape((3, 3))
+
+    return H
+
 def render(img, obj, projection, h, w, color=False):
     """
     Render a loaded obj model into the current video frame
@@ -104,7 +129,7 @@ def render(img, obj, projection, h, w, color=False):
         dst = cv2.perspectiveTransform(points.reshape(-1, 1, 3), projection)
         imgpts = np.int32(dst)
         if color is False:
-            cv2.fillConvexPoly(img, imgpts, (0, 0, 100))
+            cv2.fillConvexPoly(img, imgpts, (100, 100, 100))
         else:
             color = hex_to_rgb(face[-1])
             color = color[::-1]  # reverse
