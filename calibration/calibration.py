@@ -42,7 +42,7 @@ def calibrate_and_save_parameters():
 
         
     # Calibrate camera
-    retval, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(all_charuco_corners, all_charuco_ids, board, image.shape[:2], None, None)
+    _, camera_matrix, dist_coeffs, _, _ = cv2.aruco.calibrateCameraCharuco(all_charuco_corners, all_charuco_ids, board, image.shape[:2], None, None)
 
     # Save calibration data
     np.save('camera_matrix.npy', camera_matrix)
