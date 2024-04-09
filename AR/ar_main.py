@@ -75,7 +75,7 @@ def main():
         corners, ids, _ = detector.detectMarkers(dst)
 
         # if there has been no motion then we don't need to reanimate the 3D model
-        if reAnimate == False:
+        if reAnimate == False and homography is not None and ids is not None and len(ids) > 0:
             #aruco.drawDetectedMarkers(dst, corners)
             if homography is not None:
                 try:
