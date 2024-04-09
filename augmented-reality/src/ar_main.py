@@ -28,7 +28,7 @@ def main():
     #marker_image = cv2.aruco.generateImageMarker(dictionary, marker_id, marker_size)
     #cv2.imwrite("marker_image.png", marker_image)
 
-    THRESHOLD = 100
+    THRESHOLD = 99
     old_frame = None
     homography = None
 
@@ -49,6 +49,9 @@ def main():
     while True:
         # read the current frame
         ret, frame = cap.read()
+        if not ret:
+            print("Unable to capture video")
+            return 
 
         reAnimate = True
         if old_frame is not None:
@@ -60,9 +63,7 @@ def main():
                 reAnimate = False
 
         old_frame = frame
-        if not ret:
-            print("Unable to capture video")
-            return 
+
         
         # Undistort the frame
         h,  w = frame.shape[:2]
@@ -70,7 +71,6 @@ def main():
         dst = cv2.undistort(frame, cameraMatrix, dist, None, newCameraMatrix)
         x, y, w, h = roi
         dst = dst[y:y+h, x:x+w]
-        undistorted_image = dst.copy()
 
         # Detect markers on undistored frame
         corners, ids, _ = detector.detectMarkers(dst)
@@ -120,7 +120,7 @@ def main():
                     pass
 
         # show result
-        cv2.imshow('frame', undistorted_image)
+        cv2.imshow('frame', dst)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
