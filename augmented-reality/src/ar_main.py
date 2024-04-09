@@ -15,7 +15,7 @@ def main():
     
     # Load 3D model from OBJ file
     dir_name = os.getcwd()
-    obj = OBJ(os.path.join(dir_name, 'models/pirate-ship-fat.obj'), swapyz=True)
+    obj = OBJ(os.path.join(dir_name, 'models/wolf.obj'), swapyz=True)
     
     # Initialize the detector
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
@@ -27,6 +27,10 @@ def main():
     marker_size = 400
     #marker_image = cv2.aruco.generateImageMarker(dictionary, marker_id, marker_size)
     #cv2.imwrite("marker_image.png", marker_image)
+
+    THRESHOLD = 100
+    old_frame = None
+    homography = None
 
     base_src = np.array([[0, 0], [marker_size, 0], [marker_size, marker_size], [0, marker_size]], dtype=np.float32)
     marker_dict = {'69': {'src_pts': base_src}, 
@@ -45,6 +49,17 @@ def main():
     while True:
         # read the current frame
         ret, frame = cap.read()
+
+        reAnimate = True
+        if old_frame is not None:
+            # Calculate temporal difference matrix with threshold
+            dIm = np.float32(frame) - np.float32(old_frame)
+            dIm[dIm <= THRESHOLD] = 0
+
+            if np.all(dIm == 0): # If there is no motion
+                reAnimate = False
+
+        old_frame = frame
         if not ret:
             print("Unable to capture video")
             return 
@@ -59,9 +74,21 @@ def main():
         # Detect markers on undistored frame
         corners, ids, _ = detector.detectMarkers(dst)
 
-        # Draw detected markers
-        if ids is not None:
-            aruco.drawDetectedMarkers(dst, corners)
+        # if there has been no motion then we don't need to reanimate the 3D model
+        if reAnimate == False:
+            #aruco.drawDetectedMarkers(dst, corners)
+            if homography is not None:
+                try:
+                    # obtain 3D projection matrix from homography matrix and camera parameters
+                    projection = projection_matrix(newCameraMatrix, homography)  
+                    # project cube or model
+                    dst = render(dst, obj, projection, marker_size)
+                except:
+                    pass
+
+        # Animates the 3D model on the AR markers
+        elif ids is not None and len(ids) == 4:
+            #aruco.drawDetectedMarkers(dst, corners)
             src_pts = np.array([])
             dst_pts = np.array([])
             c = 0
@@ -70,39 +97,22 @@ def main():
                     src_pts = marker_dict[str(id[0])]['src_pts']
                     dst_pts = np.array(corners[0][0], dtype=np.float32)
                 else:
+                    
                     src_pts = np.vstack((src_pts, marker_dict[str(id[0])]['src_pts']))
                     dst_pts = np.vstack((dst_pts, corners[c][0]))
                 c+=1
 
-            homography = DLT(src_pts, dst_pts)
-            homography, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)   
+
+            
+            #homography = DLT(src_pts, dst_pts)
             #homography *= -1
-
-            if False:
-                c = 0
-                for id in ids:
-                    # Warp the marker image based on the homography matrix
-                    marker_image = marker_dict[str(id[0])]['marker_image']
-                    warped_image = cv2.warpPerspective(marker_image, homography, (dst.shape[1], dst.shape[0]))
-                    warped_image = warped_image.astype(np.uint8)  # Convert to CV_8U depth
-
-                    # Convert the warped image to BGR color space
-                    warped_image = cv2.cvtColor(warped_image, cv2.COLOR_GRAY2BGR)
-
-                    # Create a mask of the warped image
-                    mask = np.zeros_like(dst)
-                    mask = cv2.fillConvexPoly(mask, np.array(corners[c][0], dtype=np.int32), (255,)*dst.shape[2])
-
-                    # Overlay the warped image onto the original frame
-                    dst = cv2.bitwise_and(dst, cv2.bitwise_not(mask))
-                    dst = cv2.add(dst, warped_image)
-                    
-                    c+=1
+            homography, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)   
+           
 
             if homography is not None:
                 try:
                     # obtain 3D projection matrix from homography matrix and camera parameters
-                    projection = projection_matrix(cameraMatrix, homography)  
+                    projection = projection_matrix(newCameraMatrix, homography)  
                     # project cube or model
                     dst = render(dst, obj, projection, marker_size)
                 except:
@@ -148,7 +158,7 @@ def render(img, obj, projection, marker_size, color=False):
     Render a loaded obj model into the current video frame
     """
     vertices = obj.vertices
-    scale_matrix = np.eye(3) * 100
+    scale_matrix = np.eye(3) * 0.5
 
     for face in obj.faces:
         face_vertices = face[0]
