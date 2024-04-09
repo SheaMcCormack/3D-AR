@@ -54,6 +54,12 @@ def main():
 
         # Detect markers in the undistorted image
         marker_corners, marker_ids, _ = cv2.aruco.detectMarkers(dst, dictionary, parameters=params)
+        # Remove inccorectly detected markers
+        if marker_ids is not None:
+            marker_ids = np.array(marker_ids).flatten()
+            marker_corners = np.array(marker_corners).reshape(-1, 4, 2)
+            marker_corners = marker_corners[np.argsort(marker_ids)]
+            marker_ids = np.sort(marker_ids)
 
         # draw detected markers
         if marker_ids is not None and len(marker_ids) >= 6:
