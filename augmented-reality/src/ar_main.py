@@ -20,6 +20,7 @@ def main():
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
     parameters =  aruco.DetectorParameters()
     detector = aruco.ArucoDetector(dictionary, parameters)
+    board = cv2.aruco.CharucoBoard((1, 2), 4.1875, 4.1875, dictionary)
 
     # Generate and save the AR marker image
     marker_id = 99
@@ -50,8 +51,11 @@ def main():
         corners, ids, _ = detector.detectMarkers(dst)
 
         # draw detected markers
-        if ids is not None:
-            aruco.drawDetectedMarkers(dst, corners)
+        if len(ids) > 1:
+            # Interpolate CharUco corners
+            _, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(corners, ids, dst, board)
+            print(charuco_corners, charuco_ids)
+            aruco.drawDetectedMarkers(dst, charuco_corners)
             src_pts = np.array([[0, 0], [0, marker_size], [marker_size, marker_size], [marker_size, 0]], dtype=np.float32)
             dst_pts = np.array(corners[0][0], dtype=np.float32)
 
