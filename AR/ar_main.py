@@ -94,8 +94,6 @@ def main():
             dst_pts = np.array([])
             c = 0
             for id in ids:
-                print(id[0])
-                print(corners[c][0])
                 if c == 0:
                     src_pts = marker_dict[str(id[0])]['src_pts']
                     dst_pts = np.array(corners[0][0], dtype=np.float32)
