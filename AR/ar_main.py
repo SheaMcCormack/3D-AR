@@ -29,10 +29,11 @@ def main():
     #cv2.imwrite("marker_image.png", marker_image)
     base_src = np.array([[0, 0], [marker_size, 0], [marker_size, marker_size], [0, marker_size]], dtype=np.float32)
     marker_dict = {'69': {'src_pts': base_src}, 
-                   '99': {'src_pts': base_src + np.array([[2*marker_size, 0], [2*marker_size, 0], [2*marker_size, 0], [2*marker_size, 0], ], dtype=np.float32)}, 
+                   '97': {'src_pts': base_src + np.array([[2*marker_size, 0], [2*marker_size, 0], [2*marker_size, 0], [2*marker_size, 0]], dtype=np.float32)}, 
                    '22':{'src_pts': base_src + np.array([[0, 2*marker_size], [0, 2*marker_size], [0, 2*marker_size], [0, 2*marker_size]], dtype=np.float32)}, 
-                   '97':{'src_pts': base_src + np.array([[2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size]], dtype=np.float32)}}
-    
+                   '99':{'src_pts': base_src + np.array([[2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size], [2*marker_size, 2*marker_size]], dtype=np.float32)}}
+    for l in marker_dict.values():
+        print(l['src_pts'])
     # Initialize variables for motion detection
     THRESHOLD = 99
     old_frame = None
@@ -87,7 +88,7 @@ def main():
                     pass
 
         # Animates the 3D model on the AR markers
-        elif ids is not None and len(ids) == 4:
+        elif ids is not None and len(ids) >= 2:
             #aruco.drawDetectedMarkers(dst, corners)
             src_pts = np.array([])
             dst_pts = np.array([])
@@ -101,6 +102,7 @@ def main():
                     src_pts = np.vstack((src_pts, marker_dict[str(id[0])]['src_pts']))
                     dst_pts = np.vstack((dst_pts, corners[c][0]))
                 c+=1
+            
  
             #homography = DLT(src_pts, dst_pts)
             #homography *= -1
@@ -117,6 +119,7 @@ def main():
 
         # show result
         cv2.imshow('frame', dst)
+        #cv2.waitKey(-1)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
