@@ -8,14 +8,19 @@ import math
 import os
 from objloader_simple import *
 
+x_displacement = 0
+y_displacement = 0
+
 def main():
+    global x_displacement, y_displacement
+    
     # camera calibration matrix
-    cameraMatrix = np.load('../calibration/camera_matrix.npy')#np.array([[655.24548568, 0.0, 313.17837698], [0.0, 659.32398974, 244.03682075], [0.0, 0.0, 1.0]])
-    dist = np.load('../calibration/dist_coeffs.npy')#np.array([[-0.41837736, 0.24344121, -0.00069054,  0.00109116, -0.34367113]])
+    cameraMatrix = np.load(r'C:\Users\anupa\Anubhav\CMPUT 428\3D-AR\calibration\camera_matrix.npy')#np.array([[655.24548568, 0.0, 313.17837698], [0.0, 659.32398974, 244.03682075], [0.0, 0.0, 1.0]])
+    dist = np.load(r'C:\Users\anupa\Anubhav\CMPUT 428\3D-AR\calibration\dist_coeffs.npy')#np.array([[-0.41837736, 0.24344121, -0.00069054,  0.00109116, -0.34367113]])
     
     # Load 3D model from OBJ file
     dir_name = os.getcwd()
-    obj = OBJ(os.path.join(dir_name, 'models/wolf.obj'), swapyz=True)
+    obj = OBJ(r"C:\Users\anupa\Anubhav\CMPUT 428\3D-AR\augmented-reality\models\wolf.obj", swapyz=True)
     
     # Initialize the detector
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
@@ -47,11 +52,21 @@ def main():
     cap = cv2.VideoCapture(0)
 
     while True:
-        # read the current frame
+        # Read the current frame
         ret, frame = cap.read()
         if not ret:
             print("Unable to capture video")
             return 
+        
+        k = cv2.waitKey(3)
+        if k == ord('w'):
+            y_displacement -= 10
+        elif k == ord('s'):
+            y_displacement += 10
+        elif k == ord('a'):
+            x_displacement -= 10
+        elif k == ord('d'):
+            x_displacement += 10
 
         reAnimate = True
         if old_frame is not None:
@@ -165,9 +180,7 @@ def render(img, obj, projection, marker_size, color=False):
         face_vertices = face[0]
         points = np.array([vertices[vertex - 1] for vertex in face_vertices])
         points = np.dot(points, scale_matrix)
-        # render model in the middle of the reference surface. To do so,
-        # model points must be displaced
-        points = np.array([[p[0] + 1.5*marker_size, p[1] + 1.5*marker_size, p[2]] for p in points])
+        points = np.array([[p[0] + 1.5*marker_size + x_displacement, p[1] + 1.5*marker_size + y_displacement, p[2]] for p in points])
         dst = cv2.perspectiveTransform(points.reshape(-1, 1, 3), projection)
         imgpts = np.int32(dst)
         if color is False:
