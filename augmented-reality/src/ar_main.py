@@ -58,7 +58,7 @@ def main():
             print("Unable to capture video")
             return 
         
-        k = cv2.waitKey(3)
+        k = cv2.waitKey(1)
         if k == ord('w'):
             y_displacement -= 10
         elif k == ord('s'):

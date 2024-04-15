@@ -1,0 +1,5 @@
+- Calibration Folder references
+Nielsen, Nicolai. Camera Calibration in less than 5 minutes with OpenCV.
+https://www.youtube.com/watch?v= -BTKiamRTg. 
+- Augmented reality Folder reference
+ Acin, Juan Gallostra. https://github.com/juangallostra/augmented-reality/
